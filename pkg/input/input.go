@@ -3,10 +3,10 @@ package input
 import "flag"
 
 type Input struct {
-	KeyName *string
-	KeyType *string
+	KeyName          *string
+	KeyType          *string
 	AwsSharedProfile *string
-	AwsRegion *string
+	AwsRegion        *string
 }
 
 func (i *Input) ParseArgs() {

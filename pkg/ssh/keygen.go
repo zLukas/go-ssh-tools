@@ -11,13 +11,13 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type KeyPair struct{
+type KeyPair struct {
 	PrivateKey []byte
 	PublicKey  []byte
-	Name string		
+	Name       string
 }
 
-func (kp *KeyPair)GenerateKeys() (error) {
+func (kp *KeyPair) GenerateKeys() error {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		return err
@@ -31,10 +31,10 @@ func (kp *KeyPair)GenerateKeys() (error) {
 	}
 	kp.PrivateKey = pem.EncodeToMemory(privateKeyPEM)
 	kp.PublicKey = ssh.MarshalAuthorizedKey(pubKey)
-	return  nil
+	return nil
 }
 
-func (kp *KeyPair)SaveKeys() {
+func (kp *KeyPair) SaveKeys() {
 	if kp.Name == "" {
 		kp.Name = "my-key"
 	}
