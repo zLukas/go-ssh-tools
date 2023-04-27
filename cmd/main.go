@@ -11,7 +11,7 @@ import (
 func main() {
 	var args = input.Input{}
 	var keys = ssh.KeyPair{}
-	var aws = aws.Aws{}
+	var awsClient = aws.Client{}
 	args.ParseArgs()
 
 	keys.Name = *args.KeyName
@@ -22,13 +22,19 @@ func main() {
 	}
 	keys.SaveKeys()
 
-	aws.Region = *args.AwsRegion
-	aws.ProfileName = *args.AwsSharedProfile
-	aws.Ec2login()
-	id, err := aws.ImportKeyPairToAws(keys.Name, keys.PublicKey, "eu-central-1")
-	if err != nil {
-		fmt.Printf("Error: %v", err)
-	} else {
-		fmt.Printf("succesfully imported key with id %s to %s region", *id, "eu-central-1")
+	awsClient.ProfileName = *args.AwsSharedProfile
+	awsClient.Ec2login()
+
+	for _, reg := range args.AwsRegions {
+		id, err := awsClient.ImportKeyPairToAws(keys.Name, keys.PublicKey, reg)
+		if err != nil{
+			if awsError, ok  := err.(aws.AwsError); ok  {
+				fmt.Printf("Api Error(%s): %s\n", reg,  awsError.ApiError)
+			}
+		} else {
+			fmt.Printf("succesfully imported key with id %s to %s region \n", *id, reg)
+		}
+
 	}
+
 }

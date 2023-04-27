@@ -3,20 +3,23 @@ package aws
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 )
 
-type Aws struct {
+
+
+type Client struct {
 	cfg         aws.Config
 	ProfileName string
 	Ec2         *ec2.Client
 	Region      string
 }
 
-func (a *Aws) Ec2login() error {
+func (a *Client) Ec2login() error {
 	var err error
 	if a.ProfileName != "" {
 		a.cfg, err = config.LoadDefaultConfig(context.TODO(),
@@ -30,22 +33,29 @@ func (a *Aws) Ec2login() error {
 		a.Ec2 = ec2.NewFromConfig(a.cfg)
 		fmt.Printf("succesfully logged to AWS\n")
 	} else {
-		fmt.Printf("Error while connecting: %v", err)
+		fmt.Printf("Error while connecting: %v \n", err)
 	}
 
 	return err
 }
 
-func (a *Aws) ImportKeyPairToAws(KeyName string, pubKey []byte, region string) (*string, error) {
+func (a *Client) ImportKeyPairToAws(KeyName string, pubKey []byte, region string) (*string, error) {
 
 	out, err := a.Ec2.ImportKeyPair(context.TODO(), &ec2.ImportKeyPairInput{
 		KeyName: &KeyName, PublicKeyMaterial: pubKey},
 		func(opt *ec2.Options) {
 			opt.Region = region
 		})
+
 	if err != nil {
-		fmt.Printf("Error while importing the key: %v", err)
-		return nil, err
+		var error string = err.Error()
+		errorArray := strings.Split(error, ",")
+		return nil, AwsError{Operation: errorArray[0],
+			HttpStatusCode: errorArray[1],
+			RequestId:      errorArray[2],
+			ApiError:       errorArray[3],
+		}
 	}
+
 	return out.KeyPairId, nil
 }
