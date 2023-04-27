@@ -3,34 +3,31 @@ package aws
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 )
 
-
-
 type Client struct {
 	cfg         aws.Config
 	ProfileName string
-	Ec2         *ec2.Client
+	ec2Client   *ec2.Client
 	Region      string
 }
 
-func (a *Client) Ec2login() error {
+func (c *Client) Ec2login() error {
 	var err error
-	if a.ProfileName != "" {
-		a.cfg, err = config.LoadDefaultConfig(context.TODO(),
-			config.WithRegion(a.Region))
+	if c.ProfileName != "" {
+		c.cfg, err = config.LoadDefaultConfig(context.TODO(),
+			config.WithRegion(c.Region))
 	} else {
-		a.cfg, err = config.LoadDefaultConfig(context.TODO(),
-			config.WithSharedConfigProfile(a.ProfileName))
+		c.cfg, err = config.LoadDefaultConfig(context.TODO(),
+			config.WithSharedConfigProfile(c.ProfileName))
 	}
 
 	if err == nil {
-		a.Ec2 = ec2.NewFromConfig(a.cfg)
+		c.ec2Client = ec2.NewFromConfig(c.cfg)
 		fmt.Printf("succesfully logged to AWS\n")
 	} else {
 		fmt.Printf("Error while connecting: %v \n", err)
@@ -39,23 +36,29 @@ func (a *Client) Ec2login() error {
 	return err
 }
 
-func (a *Client) ImportKeyPairToAws(KeyName string, pubKey []byte, region string) (*string, error) {
+func (c *Client) ImportKeyPairToAws(KeyName string, pubKey []byte, region string) (*string, error) {
 
-	out, err := a.Ec2.ImportKeyPair(context.TODO(), &ec2.ImportKeyPairInput{
+	out, err := c.ec2Client.ImportKeyPair(context.TODO(), &ec2.ImportKeyPairInput{
 		KeyName: &KeyName, PublicKeyMaterial: pubKey},
 		func(opt *ec2.Options) {
 			opt.Region = region
 		})
 
 	if err != nil {
-		var error string = err.Error()
-		errorArray := strings.Split(error, ",")
-		return nil, AwsError{Operation: errorArray[0],
-			HttpStatusCode: errorArray[1],
-			RequestId:      errorArray[2],
-			ApiError:       errorArray[3],
-		}
+		return nil, formatAwsError(err)
 	}
 
 	return out.KeyPairId, nil
+}
+
+func (c * Client) RemoveKeyPairFromAws( keyName string, region string) error {
+	_, err := c.ec2Client.DeleteKeyPair(context.TODO(), &ec2.DeleteKeyPairInput{
+		KeyName: &keyName},
+		func(opt *ec2.Options) {
+			opt.Region = region
+		})
+	if err != nil {
+		 return formatAwsError(err)
+	}
+	return nil
 }

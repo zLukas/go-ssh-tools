@@ -14,7 +14,26 @@ func main() {
 	var awsClient = aws.Client{}
 	args.ParseArgs()
 
+	awsClient.ProfileName = *args.AwsSharedProfile
+	awsClient.Ec2login()
 	keys.Name = *args.KeyName
+
+	if *args.RemoveKeys {
+		fmt.Print("Cleaning old keys... \n")
+		for _, reg := range args.AwsRegions {
+			err := awsClient.RemoveKeyPairFromAws(keys.Name, reg)
+			if err != nil {
+				if awsError, ok := err.(aws.AwsError); ok {
+					fmt.Printf("Api Error(%s): %s, Operation: %s\n", reg, awsError.ApiError, awsError.Operation)
+				}
+			} else {
+				fmt.Printf("succesfully removed %s key from %s region \n", keys.Name, reg)
+			}
+
+		}
+	}
+
+
 	fmt.Printf("generating keypair: %s, %s.pub \n", keys.Name, keys.Name)
 	err := keys.GenerateKeys()
 	if err != nil {
@@ -22,14 +41,11 @@ func main() {
 	}
 	keys.SaveKeys()
 
-	awsClient.ProfileName = *args.AwsSharedProfile
-	awsClient.Ec2login()
-
 	for _, reg := range args.AwsRegions {
 		id, err := awsClient.ImportKeyPairToAws(keys.Name, keys.PublicKey, reg)
-		if err != nil{
-			if awsError, ok  := err.(aws.AwsError); ok  {
-				fmt.Printf("Api Error(%s): %s\n", reg,  awsError.ApiError)
+		if err != nil {
+			if awsError, ok := err.(aws.AwsError); ok {
+				fmt.Printf("Api Error(%s): %s\n", reg, awsError.ApiError)
 			}
 		} else {
 			fmt.Printf("succesfully imported key with id %s to %s region \n", *id, reg)
